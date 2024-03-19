@@ -1,9 +1,7 @@
 mod imp;
 
-use glib::{clone, Object};
-use gtk::subclass::prelude::*;
-use gtk::{gio, glib, Application, NoSelection, SignalListItemFactory};
-use gtk::{prelude::*, ListItem};
+use glib::Object;
+use gtk::{gio, glib, Application};
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
