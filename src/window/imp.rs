@@ -30,7 +30,14 @@ impl ObjectSubclass for Window {
 }
 
 // Trait shared by all GObjects
-impl ObjectImpl for Window {}
+impl ObjectImpl for Window {
+    fn constructed(&self) {
+        self.parent_constructed();
+
+        let obj = self.obj();    
+        obj.setup_callbacks();
+    }
+}
 
 // Trait shared by all widgets
 impl WidgetImpl for Window {}

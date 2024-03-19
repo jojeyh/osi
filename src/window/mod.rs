@@ -1,7 +1,9 @@
 mod imp;
 
 use glib::Object;
+use gtk::subclass::prelude::*;
 use gtk::{gio, glib, Application};
+use gtk::prelude::*;
 
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
@@ -12,6 +14,16 @@ glib::wrapper! {
 
 impl Window {
     pub fn new(app: &Application) -> Self {
-        Object::builder().property("application", app).build()
+        Object::builder()
+            .property("application", app)
+            .build()
+    }
+
+    pub fn setup_callbacks(&self) {
+        self.imp()
+            .transcribe_btn
+            .connect_clicked(|_| {
+                eprintln!("Transcribe button clicked");
+            });
     }
 }
