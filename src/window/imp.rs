@@ -1,13 +1,13 @@
 use glib::subclass::InitializingObject;
 use gtk::subclass::prelude::*;
-use gtk::{glib, ApplicationWindow, Button, CompositeTemplate, Entry};
+use gtk::{glib, ApplicationWindow, Button, CompositeTemplate, Entry, Label, TextView};
 
 // Object holding the state
 #[derive(CompositeTemplate, Default)]
 #[template(resource = "/org/gtk_rs/osi/window.ui")]
 pub struct Window {
     #[template_child]
-    pub transcribed_text: TemplateChild<Entry>,
+    pub transcribed_text: TemplateChild<TextView>,
     #[template_child]
     pub transcribe_btn: TemplateChild<Button>,
 }
