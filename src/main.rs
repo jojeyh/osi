@@ -4,11 +4,15 @@ use gtk::gdk::Display;
 use gtk::glib::clone;
 use gtk::{prelude::*, CssProvider, Orientation, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow, Button, Entry};
+use reqwest::Error;
+
 use message::Message;
 
 const APP_ID: &str = "org.nemea.osi";
+const OPENAI_URL: &str = "https://api.openai.com/v1/chat/completions";
 
-fn main() -> glib::ExitCode {
+#[tokio::main]
+async fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     app.connect_startup(|_| load_css());
     app.connect_activate(build_ui);
@@ -24,6 +28,33 @@ fn load_css() {
         &provider, 
         gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );
+}
+
+async fn get_completion(prompt: &str) -> Result<(), Error> {
+    let client = reqwest::Client::new();
+    let api_key = std::env::var("OPENAI_API_KEY").unwrap_or_else(|_| {
+        panic!("OPENAI_API_KEY must be set"); // TODO handle this gracefully
+    });
+
+    let payload = serde_json::json!({
+        "model": "gpt-3.5-turbo", // TODO refactor to variable
+        "messages": [
+            { "role": "user", "content": prompt },
+        ],
+    }).to_string();
+
+    let response = client
+        .post(OPENAI_URL)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .body(payload)
+        .send()
+        .await?;
+    let body = response.text().await?;
+    let completion: serde_json::Value = serde_json::from_str(&body)
+        .expect("Failed to parse response from OpenAI API"); // TODO handle gracefully
+    println!("{:?}", completion["choices"][0]["message"]["content"].as_str().unwrap_or(""));
+    Ok(())
 }
 
 fn build_ui(app: &Application) {
@@ -55,7 +86,11 @@ fn build_ui(app: &Application) {
     scrolled_window.set_size_request(600, 800);
 
     command_button.connect_clicked(clone!(@strong command_entry => move |_| {
-        println!("Command: {}", command_entry.text());
+        let prompt = command_entry.clone().text().to_string();
+        command_entry.set_text("");
+        tokio::spawn(async move {
+            let _ = get_completion(&prompt).await;
+        });
     }));
 
     let command_box = Box::new(Orientation::Horizontal, 1);
