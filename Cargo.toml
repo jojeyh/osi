@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 gtk = { version = "0.8.1", package = "gtk4", features = ["v4_6"] }
 hound = "3.5.1"
+tokio = "1.36.0"
 whisper-rs = "0.10.0"
