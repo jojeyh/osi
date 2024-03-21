@@ -1,5 +1,6 @@
 mod message;
 mod network;
+mod audio;
 
 use gtk::gdk::Display;
 use gtk::glib::clone;
@@ -7,6 +8,7 @@ use gtk::{prelude::*, CssProvider, Orientation, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow, Button, Entry};
 
 use network::get_completion;
+use audio::get_transcription;
 use message::Message;
 
 const APP_ID: &str = "org.nemea.osi";
@@ -62,6 +64,7 @@ fn build_ui(app: &Application) {
         let prompt = command_entry.clone().text().to_string();
         command_entry.set_text("");
         tokio::spawn(async move {
+            let audio_data = get_transcription().await;
             let _ = get_completion(&prompt).await;
         });
     }));
