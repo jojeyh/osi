@@ -1256,6 +1256,7 @@ dependencies = [
  "cpal",
  "gtk4",
  "hound",
+ "regex",
  "reqwest",
  "serde_json",
  "tokio",

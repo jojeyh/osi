@@ -66,10 +66,17 @@ fn build_ui(app: &Application) {
             let audio_data = record().await.unwrap_or_else(|_| {
                 panic!("Failed to record audio");
             });
-            let transcription = get_transcription(&audio_data)
+            let transcription = get_transcription(audio_data)
                 .await.unwrap_or("".to_string());
             let completion = get_completion(&transcription).await;
-            println!("Completion: {}", completion);
+            println!("{}", completion);
+            // let output = std::process::Command::new("bash")
+            //     .arg("-c")
+            //     .arg(completion)
+            //     .output()
+            //     .expect("Failed to execute command");
+            // let output_str = String::from_utf8(output.stdout).unwrap();
+            // println!("{}", output_str);
         });
     }));
 
