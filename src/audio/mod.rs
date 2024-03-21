@@ -1,7 +1,7 @@
 use std::{fmt::Error, sync::{Arc, Mutex}, time::Duration};
 use cpal::{traits::{StreamTrait, DeviceTrait, HostTrait}, SampleRate};
 
-pub async fn get_transcription() -> Result<Vec<f32>, Error> {
+pub async fn record() -> Result<Vec<f32>, Error> {
     let host = cpal::default_host();
     let device = host.default_input_device().expect("Failed to get default input device");
     let mut supported_configs_range = device.supported_output_configs()
@@ -9,6 +9,7 @@ pub async fn get_transcription() -> Result<Vec<f32>, Error> {
     let supported_config = supported_configs_range.next()
         .expect("No supported config")
         .with_sample_rate(SampleRate(16000));
+    println!("Supported config: {:?}", supported_config);
 
     let data = Arc::new(Mutex::new(Vec::<f32>::new()));
     let callback_data = Arc::clone(&data);
@@ -28,8 +29,8 @@ pub async fn get_transcription() -> Result<Vec<f32>, Error> {
     stream.play().expect("Stream play failed.");
 
     // Sleep for 3 seconds
-    std::thread::sleep(Duration::from_secs(3));
-    drop(stream);
+    std::thread::sleep(Duration::from_secs(5));
+    drop(stream); // This is so the Arc has only a single reference, dirty workaround
 
     let unwrapped_audio = Arc::try_unwrap(data)
         .unwrap_or_else(|_| {
@@ -39,6 +40,7 @@ pub async fn get_transcription() -> Result<Vec<f32>, Error> {
         .unwrap_or_else(|_| {
             panic!("Failed to unwrap audio data Mutex"); 
         });
+    // println!("Audio data: {:?}", audio_data);
 
     Ok(audio_data)
 }
