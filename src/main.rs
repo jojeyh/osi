@@ -7,9 +7,11 @@ use gtk::glib::clone;
 use gtk::{prelude::*, CssProvider, Orientation, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow, Button, Entry};
 
+use ndarray::{arr0, Array, Array0, Array1, Array2, Array3};
 use network::{get_completion, get_transcription};
 use audio::record;
 use message::Message;
+use ort::{inputs, GraphOptimizationLevel, Session, Value};
 
 const APP_ID: &str = "org.nemea.osi";
 
@@ -61,6 +63,7 @@ fn build_ui(app: &Application) {
     scrolled_window.set_size_request(600, 800);
 
     command_button.connect_clicked(clone!(@strong command_entry => move |_| {
+		// Currently not using hte command entry
         command_entry.set_text("");
         tokio::spawn(async move {
             let audio_data = record().await.unwrap_or_else(|_| {
@@ -69,14 +72,13 @@ fn build_ui(app: &Application) {
             let transcription = get_transcription(audio_data)
                 .await.unwrap_or("".to_string());
             let completion = get_completion(&transcription).await;
-            println!("{}", completion);
-            // let output = std::process::Command::new("bash")
-            //     .arg("-c")
-            //     .arg(completion)
-            //     .output()
-            //     .expect("Failed to execute command");
-            // let output_str = String::from_utf8(output.stdout).unwrap();
-            // println!("{}", output_str);
+            let output = std::process::Command::new("bash")
+                .arg("-c")
+                .arg(completion)
+                .output()
+                .expect("Failed to execute command");
+            let output_str = String::from_utf8(output.stdout).unwrap();
+            println!("{}", output_str);
         });
     }));
 

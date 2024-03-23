@@ -1,7 +1,12 @@
-use std::{fmt::Error, sync::{Arc, Mutex}, time::Duration};
-use cpal::{traits::{StreamTrait, DeviceTrait, HostTrait}, SampleRate};
+use std::fmt::Error;
+use cpal::{traits::{DeviceTrait, HostTrait, StreamTrait}, SampleRate};
+use rtrb::RingBuffer;
+
+const SPEECH_BUFFER_COUNT: u8 = 20; 
 
 pub async fn record() -> Result<Vec<f32>, Error> {
+    let mut vad = webrtc_vad::Vad::new_with_rate(webrtc_vad::SampleRate::Rate16kHz);
+    vad.set_mode(webrtc_vad::VadMode::VeryAggressive);
     let host = cpal::default_host();
     let device = host.default_input_device().expect("Failed to get default input device");
     let mut supported_configs_range = device.supported_output_configs()
@@ -9,38 +14,89 @@ pub async fn record() -> Result<Vec<f32>, Error> {
     let supported_config = supported_configs_range.next()
         .expect("No supported config")
         .with_sample_rate(SampleRate(16000));
-    println!("Supported config: {:?}", supported_config);
 
-    let data = Arc::new(Mutex::new(Vec::<f32>::new()));
-    let callback_data = Arc::clone(&data);
+    // let data = Arc::new(Mutex::new(Vec::<f32>::new()));
+    // let callback_data = Arc::clone(&data);
+    let (mut producer, mut consumer) = RingBuffer::<i16>::new(1024);
 
     let stream = device.build_input_stream(
         &supported_config.into(),
-        move |input_data: &[f32], _: &cpal::InputCallbackInfo| {
-            let mut data = callback_data.lock().unwrap();
-            data.extend_from_slice(input_data);
+        move |input_data: &[i16], _: &cpal::InputCallbackInfo| {
+            for sample in input_data {
+                producer.push(*sample).expect("Failed to push sample to ring buffer");
+            }
         },
         move |err| {
-            eprintln!("an error occurred on stream: {}", err);
+            eprintln!("An error occurred on stream: {}", err);
         },
         None,
     ).expect("build_input_stream failed");
 
     stream.play().expect("Stream play failed.");
 
-    // Sleep for 3 seconds
-    std::thread::sleep(Duration::from_secs(5));
-    drop(stream); // This is so the Arc has only a single reference, dirty workaround
-
-    let unwrapped_audio = Arc::try_unwrap(data)
-        .unwrap_or_else(|_| {
-            panic!("Failed to unwrap audio data Arc");
-        });
-    let audio_data = unwrapped_audio.into_inner()
-        .unwrap_or_else(|_| {
-            panic!("Failed to unwrap audio data Mutex"); 
-        });
-    // println!("Audio data: {:?}", audio_data);
+    let mut unactive_count = 0;
+    let mut speaking = false;
+    let mut speech_segment = Vec::<i16>::new();
+    loop {
+        /*
+            TODO This is a dirty hack and should be changed to an algorithm
+            that transcribes in short segments and also concatenates those segments 
+            checking the results against one another, the choice of length of small vs 
+            long segment will be hard to figure out
+         */
+        if consumer.slots() > 160 {
+            let mut audio_frame = vec![0i16; 160];
+            for _ in 0..160 {
+                match consumer.pop() {
+                    Ok(value) => audio_frame.push(value),
+                    Err(err) => {
+                        println!("Error: {}", err);
+                        break;
+                    },
+                }
+            }
+            let speech_active = vad.is_voice_segment(&audio_frame)
+                .expect("Failed to check voice segment");
+            match speech_active {
+                true => {
+                    match speaking {
+                        true => {
+                            // Active speech detected and already speaking, do nothing
+                            println!("Speaking");
+                        },
+                        false => {
+                            // Active speech and not already speaking
+                            speaking = true;
+                            unactive_count = 0;
+                        }
+                    }
+                },
+                false => {
+                    match speaking {
+                        true => {
+                            // Voice is not active and has been speaking
+                            if unactive_count > SPEECH_BUFFER_COUNT {
+                                /* 
+                                    If more than 20 frames of unactive speech
+                                    then consider end of segment and 
+                                    transcribe
+                                */ 
+                                speaking = false;
+                                // TODO process audio and get transcription
+                            } else {
+                                unactive_count += 1;
+                            }
+                        },
+                        false => {
+                            // Voice is not active and we are not speaking
+                            // Do nothing
+                            println!("Not speaking.");
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Ok(audio_data)
 }
