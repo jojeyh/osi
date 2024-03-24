@@ -1,8 +1,9 @@
+use async_channel::Sender;
 use gtk::gdk::Key;
+use gtk::gio::spawn_blocking;
 use gtk::{prelude::*, Align, EventControllerKey, Label, TextView, WrapMode};
 use gtk::{Box, Orientation};
 use gtk::glib::{clone, Propagation};
-use tokio::sync::mpsc::Sender;
 
 const WIDGET_MARGIN: i32 = 10;
 
@@ -11,7 +12,7 @@ pub struct Line {
 }
 
 impl Line {
-    pub fn new(tx: Sender<String>) -> Self {
+    pub fn new(sender: Sender<String>) -> Self {
         let current_dir = std::env::current_dir()
             .expect("Failed to get current directory"); // TODO handle error
         let current_dir_str = current_dir.to_str().unwrap();
@@ -44,9 +45,10 @@ impl Line {
                     let text = buffer.text(&start, &end, false);
                     let s = String::from(text.as_str());
 
-                    let tx_clone = tx.clone();
-                    tokio::spawn(async move {
-                        tx_clone.send(s).await.expect("Failed to send message")
+                    let sender_clone = sender.clone();
+                    spawn_blocking(move || {
+                        sender_clone.send_blocking(s)
+                            .expect("Could not send message.");
                     });
                     entry.set_editable(false);
                     Propagation::Stop

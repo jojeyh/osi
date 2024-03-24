@@ -18,3 +18,4 @@ ort = "2.0.0-alpha.4"
 ndarray = "0.15.6"
 rtrb = "0.3.0"
 webrtc-vad = { git ="https://github.com/jojeyh/webrtc-vad.git" }
+async-channel = "2.2.0"

@@ -6,19 +6,19 @@ mod components;
 
 use std::sync::{Arc, Mutex};
 
-use gtk::glib::Propagation;
+use gtk::glib::{spawn_future_local, MainContext, Propagation};
 use gtk::{prelude::*, EventControllerKey};
 use gtk::gdk::{Display, Key};
 use gtk::{CssProvider, Label, Orientation, PolicyType, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow};
+use gtk::glib::clone;
 
 use components::line::Line;
 use tokio::sync::mpsc;
 
 const APP_ID: &str = "org.nemea.osi";
 
-#[tokio::main]
-async fn main() -> glib::ExitCode {
+fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
     app.connect_startup(|_| load_css());
     app.connect_activate(build_ui);
@@ -37,7 +37,7 @@ fn load_css() {
 }
 
 fn build_ui(app: &Application) {
-    let (tx, mut rx) = mpsc::channel::<String>(32);
+    let (sender, receiver) = async_channel::bounded(1);
 
     let vbox = Box::new(Orientation::Vertical, 0);
     vbox.set_hexpand(true);
@@ -48,8 +48,8 @@ fn build_ui(app: &Application) {
     spacer.set_vexpand(true);
     vbox.append(&spacer); 
 
-    let tx_clone = tx.clone();
-    let line = Line::new(tx_clone);
+    let sender_clone = sender.clone();
+    let line = Line::new(sender_clone);
     let mut lines = Vec::<Line>::new();
     lines.push(line);
     for line in &lines {
@@ -72,9 +72,18 @@ fn build_ui(app: &Application) {
 
     window.present();
 
-    tokio::spawn(async move {
-        while let Some(s) = rx.recv().await {
-            println!("{}", s)
-        }
-    });
+    spawn_future_local(clone!(@weak vbox => async move {
+        while let Ok(s) = receiver.recv().await {
+            println!("{}", s);
+            let line = Line::new(sender.clone());
+            vbox.append(&line.widget);
+        } 
+    }));
+    // tokio::spawn(clone!(@strong vbox => async move {
+    //     while let Some(s) = rx.recv().await {
+    //         let line = Line::new(tx.clone());
+    //         let line_widget = line.widget.clone();
+    //         vbox.append(&line_widget);
+    //     }
+    // }));
 }
