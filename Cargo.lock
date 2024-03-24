@@ -1432,7 +1432,6 @@ dependencies = [
  "hound",
  "ndarray",
  "ort",
- "rb",
  "regex",
  "reqwest",
  "rtrb",
@@ -1588,12 +1587,6 @@ name = "rawpointer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
-
-[[package]]
-name = "rb"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56cf8381505b60ae18a4097f1d0be093287ca3bf4fbb23d36ac5ad3bba335daa"
 
 [[package]]
 name = "redox_syscall"
@@ -2452,8 +2445,7 @@ dependencies = [
 [[package]]
 name = "webrtc-vad"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39a1e40fd6ca90be95459152a2537f2ba4286ee1b13073f7ebcaa74fc94e3008"
+source = "git+https://github.com/jojeyh/webrtc-vad.git#b3a8c49761eb79e4e4b1b787cacd1e9b1a13aeb1"
 dependencies = [
  "cc",
 ]

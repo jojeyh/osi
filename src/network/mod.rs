@@ -58,11 +58,8 @@ pub async fn get_completion(task: &str) -> String {
     text.to_string()
 }
 
-/* 
-    TODO are references necessary for this, audio data can be moved 
-    since it's not used after this function? Or do callbacks mess this up?
- */
 pub async fn get_transcription(audio_data: Vec<f32>) -> Result<String, Error> {
+    println!("{:?}", audio_data.len());
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate: 16000,
@@ -113,6 +110,7 @@ pub async fn get_transcription(audio_data: Vec<f32>) -> Result<String, Error> {
     // TODO these errors need to be handled better you fucking loser
     let json: serde_json::Value = serde_json::from_str(&payload_without_newlines)
         .unwrap_or_else(|_| panic!("Failed to parse response body from OpenAI API"));
+    println!("{:?}", json);
     let transcription = json["text"].as_str()
         .expect("Expected text to be a string")
         .to_string();

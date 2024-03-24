@@ -1,18 +1,19 @@
 mod message;
 mod network;
 mod recorder;
+mod utils;
+mod components;
 
-use gtk::gdk::Display;
-use gtk::glib::clone;
-use gtk::{prelude::*, CssProvider, Orientation, ScrolledWindow};
-use gtk::{glib, Box, Application, ApplicationWindow, Button, Entry};
+use gtk::glib::Propagation;
+use gtk::{prelude::*, EventControllerKey};
+use gtk::gdk::{Display, Key};
+use gtk::{CssProvider, Label, Orientation, PolicyType, ScrolledWindow};
+use gtk::{glib, Box, Application, ApplicationWindow};
 
-use network::{get_completion, get_transcription};
-use message::Message;
-
-use crate::recorder::Recorder;
+use components::line::Line;
 
 const APP_ID: &str = "org.nemea.osi";
+const LINE_MARGIN: i32 = 10;
 
 #[tokio::main]
 async fn main() -> glib::ExitCode {
@@ -34,70 +35,32 @@ fn load_css() {
 }
 
 fn build_ui(app: &Application) {
+    let vbox = Box::new(Orientation::Vertical, 0);
+    vbox.set_hexpand(true);
+    vbox.set_vexpand(true);
+
+    // Add a spacer to push the command line to the bottom
+    let spacer = Label::new(None);
+    spacer.set_vexpand(true);
+    vbox.append(&spacer); 
+
+    let line = Line::new();
+
+    vbox.append(&line.widget);
+
     let scrolled_window = ScrolledWindow::builder()
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
+        .hscrollbar_policy(PolicyType::Never)
+        .child(&vbox)
         .build();
-
-	let command_entry = Entry::builder()
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .build();
-    command_entry.set_placeholder_text(Some("Enter command..."));
-
-    let command_button = Button::builder()
-        .label("Command")
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(12)
-        .margin_end(12)
-        .build();
-
-    let message = Message::new("Arrakis was made to train the faithful");
-    scrolled_window.set_child(Some(&message.text_view));
-    scrolled_window.set_size_request(600, 800);
-
-    command_button.connect_clicked(clone!(@strong command_entry => move |_| {
-		// Currently not using hte command entry
-        command_entry.set_text("");
-        tokio::spawn(async move {
-            /* 
-                NOTE: This recorder is declared mutable
-                because the vad api requires it for the 
-                method is_voice_segment
-            */
-            let mut recorder = Recorder::new();
-            recorder.record();
-            // let transcription = get_transcription(audio_data)
-            //     .await.unwrap_or("".to_string());
-            // let completion = get_completion(&transcription).await;
-            // let output = std::process::Command::new("bash")
-            //     .arg("-c")
-            //     .arg(completion)
-            //     .output()
-            //     .expect("Failed to execute command");
-            // let output_str = String::from_utf8(output.stdout).unwrap();
-            // println!("{}", output_str);
-        });
-    }));
-
-    let command_box = Box::new(Orientation::Horizontal, 1);
-    command_box.append(&command_entry);
-    command_box.append(&command_button);
-
-    let vbox = Box::new(Orientation::Vertical, 1);
-    vbox.append(&scrolled_window);
-    vbox.append(&command_box);
+    scrolled_window.set_hscrollbar_policy(PolicyType::Never);
+    scrolled_window.set_vexpand(true);
 
     let window = ApplicationWindow::builder()
         .application(app)
         .title("osi")
-        .child(&vbox)
+        .child(&scrolled_window)
         .build();
+    window.set_default_size(1000, 600);
 
     window.present();
 }
