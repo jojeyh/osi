@@ -4,17 +4,16 @@ mod recorder;
 mod utils;
 mod components;
 
-use std::sync::{Arc, Mutex};
-
-use gtk::glib::{spawn_future_local, MainContext, Propagation};
-use gtk::{prelude::*, EventControllerKey};
-use gtk::gdk::{Display, Key};
+use gtk::glib::spawn_future_local;
+use gtk::prelude::*;
+use gtk::gdk::Display;
 use gtk::{CssProvider, Label, Orientation, PolicyType, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow};
 use gtk::glib::clone;
 
 use components::line::Line;
-use tokio::sync::mpsc;
+
+use crate::network::get_completion;
 
 const APP_ID: &str = "org.nemea.osi";
 
@@ -48,13 +47,10 @@ fn build_ui(app: &Application) {
     spacer.set_vexpand(true);
     vbox.append(&spacer); 
 
+    // First cmdline prompt
     let sender_clone = sender.clone();
     let line = Line::new(sender_clone);
-    let mut lines = Vec::<Line>::new();
-    lines.push(line);
-    for line in &lines {
-        vbox.append(&line.widget);
-    }
+    vbox.append(&line.widget);
 
     let scrolled_window = ScrolledWindow::builder()
         .hscrollbar_policy(PolicyType::Never)
@@ -74,16 +70,9 @@ fn build_ui(app: &Application) {
 
     spawn_future_local(clone!(@weak vbox => async move {
         while let Ok(s) = receiver.recv().await {
-            println!("{}", s);
+            println!("Received: {}", s);
             let line = Line::new(sender.clone());
             vbox.append(&line.widget);
         } 
     }));
-    // tokio::spawn(clone!(@strong vbox => async move {
-    //     while let Some(s) = rx.recv().await {
-    //         let line = Line::new(tx.clone());
-    //         let line_widget = line.widget.clone();
-    //         vbox.append(&line_widget);
-    //     }
-    // }));
 }

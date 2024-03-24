@@ -1,14 +1,25 @@
+use std::sync::OnceLock;
+
 use async_channel::Sender;
 use gtk::gdk::Key;
-use gtk::gio::spawn_blocking;
 use gtk::{prelude::*, Align, EventControllerKey, Label, TextView, WrapMode};
 use gtk::{Box, Orientation};
 use gtk::glib::{clone, Propagation};
+use tokio::runtime::Runtime;
+
+use crate::network::get_completion;
 
 const WIDGET_MARGIN: i32 = 10;
 
 pub struct Line {
     pub widget: Box,
+}
+
+fn runtime() -> &'static Runtime {
+    static RUNTIME: OnceLock<Runtime> = OnceLock::new();
+    RUNTIME.get_or_init(|| {
+        Runtime::new().expect("Setting up tokio runtime needs to succeed.")
+    })
 }
 
 impl Line {
@@ -38,18 +49,16 @@ impl Line {
         event_controller.connect_key_pressed(clone!(@strong entry => move |_, key, _, _| {
             match key {
                 Key::Return => {
-                    println!("Enter pressed");
                     let buffer = entry.buffer();
                     let start = buffer.start_iter();
                     let end = buffer.end_iter();
                     let text = buffer.text(&start, &end, false);
-                    let s = String::from(text.as_str());
 
-                    let sender_clone = sender.clone();
-                    spawn_blocking(move || {
-                        sender_clone.send_blocking(s)
-                            .expect("Could not send message.");
-                    });
+                    runtime().spawn(clone!(@strong sender => async move {
+                        let completion = get_completion(&text).await;
+                        sender.send(completion).await
+                            .expect("Channel must be open.");
+                    }));
                     entry.set_editable(false);
                     Propagation::Stop
                 },

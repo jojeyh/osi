@@ -11,11 +11,10 @@ cpal = "0.15.3"
 gtk = { version = "0.8.1", package = "gtk4", features = ["v4_6"] }
 hound = "3.5.1"
 regex = "1.10.3"
-reqwest = { version = "0.12.0", features = ["json", "multipart", "blocking"] }
 serde_json = "1.0.114"
-tokio = { version = "1.36.0", features = ["full"] }
-ort = "2.0.0-alpha.4"
 ndarray = "0.15.6"
 rtrb = "0.3.0"
 webrtc-vad = { git ="https://github.com/jojeyh/webrtc-vad.git" }
 async-channel = "2.2.0"
+tokio = { version = "1", features = ["rt-multi-thread"] }
+reqwest = { version = "0.11", default-features = false, features = ["rustls-tls", "json", "multipart", "blocking"] }
