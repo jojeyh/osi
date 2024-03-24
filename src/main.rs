@@ -4,6 +4,8 @@ mod recorder;
 mod utils;
 mod components;
 
+use std::sync::{Arc, Mutex};
+
 use gtk::glib::Propagation;
 use gtk::{prelude::*, EventControllerKey};
 use gtk::gdk::{Display, Key};
@@ -11,9 +13,9 @@ use gtk::{CssProvider, Label, Orientation, PolicyType, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow};
 
 use components::line::Line;
+use tokio::sync::mpsc;
 
 const APP_ID: &str = "org.nemea.osi";
-const LINE_MARGIN: i32 = 10;
 
 #[tokio::main]
 async fn main() -> glib::ExitCode {
@@ -35,6 +37,8 @@ fn load_css() {
 }
 
 fn build_ui(app: &Application) {
+    let (tx, mut rx) = mpsc::channel::<String>(32);
+
     let vbox = Box::new(Orientation::Vertical, 0);
     vbox.set_hexpand(true);
     vbox.set_vexpand(true);
@@ -44,9 +48,13 @@ fn build_ui(app: &Application) {
     spacer.set_vexpand(true);
     vbox.append(&spacer); 
 
-    let line = Line::new();
-
-    vbox.append(&line.widget);
+    let tx_clone = tx.clone();
+    let line = Line::new(tx_clone);
+    let mut lines = Vec::<Line>::new();
+    lines.push(line);
+    for line in &lines {
+        vbox.append(&line.widget);
+    }
 
     let scrolled_window = ScrolledWindow::builder()
         .hscrollbar_policy(PolicyType::Never)
@@ -63,4 +71,10 @@ fn build_ui(app: &Application) {
     window.set_default_size(1000, 600);
 
     window.present();
+
+    tokio::spawn(async move {
+        while let Some(s) = rx.recv().await {
+            println!("{}", s)
+        }
+    });
 }
