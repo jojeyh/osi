@@ -48,6 +48,7 @@ impl Line {
                     tokio::spawn(async move {
                         tx_clone.send(s).await.expect("Failed to send message")
                     });
+                    entry.set_editable(false);
                     Propagation::Stop
                 },
                 _ => Propagation::Proceed,
