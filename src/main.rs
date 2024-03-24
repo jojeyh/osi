@@ -4,8 +4,10 @@ mod recorder;
 mod utils;
 mod components;
 
+use std::process::Command;
+
 use gtk::glib::spawn_future_local;
-use gtk::prelude::*;
+use gtk::{prelude::*, Align};
 use gtk::gdk::Display;
 use gtk::{CssProvider, Label, Orientation, PolicyType, ScrolledWindow};
 use gtk::{glib, Box, Application, ApplicationWindow};
@@ -72,7 +74,22 @@ fn build_ui(app: &Application) {
         while let Ok(s) = receiver.recv().await {
             println!("Received: {}", s);
             let line = Line::new(sender.clone());
+            let output = Command::new("bash")
+                .arg("-c")
+                .arg(&s)
+                .output()
+                .expect("Failed to execute command");
+            let output_str = std::str::from_utf8(&output.stdout).unwrap();
+            let output_box = Box::new(Orientation::Horizontal, 0);
+            output_box.set_margin_bottom(10);
+            output_box.set_margin_top(10);
+            output_box.set_margin_start(10);
+            output_box.set_margin_end(10);
+            output_box.set_halign(Align::Start);
+            let label = Label::new(Some(output_str));
+            output_box.append(&label);
+            vbox.append(&output_box);
             vbox.append(&line.widget);
-        } 
+        }
     }));
 }
